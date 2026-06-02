@@ -1,0 +1,16 @@
+[Unit]
+Description=HaynesWorld Rival API Service
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/rival
+EnvironmentFile=/opt/rival/.env.production
+ExecStart=/opt/rival/.venv/bin/haynesworld-rival run-api
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

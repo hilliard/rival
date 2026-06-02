@@ -1,0 +1,16 @@
+[Unit]
+Description=HaynesWorld Rival Worker Loop
+After=network.target rival-api.service
+Wants=rival-api.service
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/rival
+EnvironmentFile=/opt/rival/.env.production
+ExecStart=/opt/rival/.venv/bin/haynesworld-rival poll-loop
+Restart=always
+RestartSec=8
+
+[Install]
+WantedBy=multi-user.target

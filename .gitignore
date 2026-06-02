@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Local environment files
+.env
+.env.production
+.env.local
+.env.*.local
+
+# Logs and runtime files
+*.log
+*.pid
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
