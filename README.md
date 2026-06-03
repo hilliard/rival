@@ -73,6 +73,11 @@ haynesworld-rival run-api
 Admin UI: http://127.0.0.1:8080/admin/dashboard
 Home page: http://127.0.0.1:8080/
 
+## Stop the API server
+
+$pid = (Get-NetTCPConnection -LocalPort 8080).OwningProcess
+Stop-Process -Id $pid -Force
+
 ## Worker Commands
 
 - One-shot run that publishes picks and forum content:

@@ -24,3 +24,4 @@ def get_api_version(app_version: str) -> str:
 
 APP_VERSION = get_app_version()
 API_VERSION = get_api_version(APP_VERSION)
+SCHEMA_VERSION = APP_VERSION

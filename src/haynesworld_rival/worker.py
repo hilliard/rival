@@ -10,6 +10,7 @@ from .client import HaynesWorldClient
 from .config import RivalSettings
 from .contracts import ActiveSlate, RivalRunPlan
 from .data_engine import RivalDataEngine
+from .db import RivalDatabase
 from .persona import RivalPersonaEngine
 
 
@@ -21,9 +22,12 @@ class RivalWorker:
     settings: RivalSettings
     client: HaynesWorldClient
     data_engine: RivalDataEngine = field(default_factory=RivalDataEngine)
+    db: RivalDatabase | None = None
     persona_engine: RivalPersonaEngine | None = None
 
     def __post_init__(self) -> None:
+        if self.db is None:
+            self.db = RivalDatabase(self.settings)
         if self.persona_engine is None:
             self.persona_engine = RivalPersonaEngine(settings=self.settings)
 
@@ -94,11 +98,28 @@ class RivalWorker:
         )
 
     def run_once(self, publish: bool = True) -> RivalRunPlan:
-        active_slates = self.client.fetch_active_slates()
-        plan = self.build_plan(active_slates)
-        if not publish:
-            return plan
-        return self.publish_plan(plan)
+        plan: RivalRunPlan | None = None
+        try:
+            active_slates = self.client.fetch_active_slates()
+            plan = self.build_plan(active_slates)
+            final_plan = plan if not publish else self.publish_plan(plan)
+            self.db.record_run(final_plan, published=publish, status="succeeded")
+            return final_plan
+        except Exception as exc:
+            failed_plan = plan or RivalRunPlan(
+                run_id=str(uuid4()),
+                generated_at=datetime.now(UTC),
+                model_version=self.settings.ollama_model,
+                prompt_version="rival-persona-v1",
+                notes=(f"Run failed: {exc}",),
+            )
+            self.db.record_run(
+                failed_plan,
+                published=publish,
+                status="failed",
+                error_message=str(exc),
+            )
+            raise
 
     def run_poll_loop(self, publish: bool = True) -> None:
         LOGGER.info("Starting Rival worker poll loop at %ss intervals.", self.settings.poll_interval_seconds)

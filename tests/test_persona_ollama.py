@@ -17,6 +17,10 @@ class _MockOllamaHandler(BaseHTTPRequestHandler):
     request_count: int = 0
 
     def do_POST(self) -> None:  # noqa: N802
+        length = int(self.headers.get("Content-Length", "0"))
+        if length:
+            self.rfile.read(length)
+
         if self.path != "/api/generate":
             self.send_response(404)
             self.end_headers()
