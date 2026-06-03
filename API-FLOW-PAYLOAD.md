@@ -35,7 +35,7 @@ HaynesWorld API accepts payloads and applies platform rules
 {
   "api_key": "rival-service-key",
   "client_name": "therival",
-  "client_version": "0.1.0"
+  "client_version": "1.0.0"
 }
 ```
 

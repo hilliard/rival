@@ -48,7 +48,7 @@ export const POST: APIRoute = async ({ request }) => {
         ${rawKey}
       </div>
       <p class="text-xs text-gray-500">Save this directly to your bot environment config as <code>RIVAL_API_KEY</code>.</p>
-    </div>
+    </div>'
   `, {
     headers: { 'Content-Type': 'text/html' }
   });

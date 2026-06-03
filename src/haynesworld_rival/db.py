@@ -203,6 +203,46 @@ class RivalDatabase:
 
                 return result
 
+    def fetch_dashboard_snapshot(self) -> dict[str, Any]:
+        with self.connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT
+                        (SELECT count(*) FROM users) AS user_count,
+                        (SELECT count(*) FROM slates) AS slate_count,
+                        (SELECT count(*) FROM slates WHERE lock_at > now()) AS active_slate_count,
+                        (SELECT count(*) FROM slate_matches sm JOIN slates s ON s.id = sm.slate_id WHERE s.lock_at > now()) AS active_match_count,
+                        (SELECT count(*) FROM contest_submissions) AS submission_count,
+                        (SELECT count(*) FROM forum_topics) AS topic_count,
+                        (SELECT count(*) FROM forum_comments) AS comment_count,
+                        (SELECT min(lock_at) FROM slates WHERE lock_at > now()) AS next_slate_lock_at,
+                        (SELECT title FROM forum_topics ORDER BY created_at DESC LIMIT 1) AS latest_topic_title,
+                        (SELECT created_at FROM forum_topics ORDER BY created_at DESC LIMIT 1) AS latest_topic_at,
+                        (SELECT created_at FROM contest_submissions ORDER BY created_at DESC LIMIT 1) AS latest_submission_at,
+                        (SELECT created_at FROM forum_comments ORDER BY created_at DESC LIMIT 1) AS latest_comment_at
+                    """
+                )
+                row = cur.fetchone() or {}
+
+        def _iso(value: Any) -> str | None:
+            return value.isoformat() if hasattr(value, "isoformat") and value is not None else None
+
+        return {
+            "user_count": int(row.get("user_count", 0)),
+            "slate_count": int(row.get("slate_count", 0)),
+            "active_slate_count": int(row.get("active_slate_count", 0)),
+            "active_match_count": int(row.get("active_match_count", 0)),
+            "submission_count": int(row.get("submission_count", 0)),
+            "topic_count": int(row.get("topic_count", 0)),
+            "comment_count": int(row.get("comment_count", 0)),
+            "next_slate_lock_at": _iso(row.get("next_slate_lock_at")),
+            "latest_topic_title": row.get("latest_topic_title"),
+            "latest_topic_at": _iso(row.get("latest_topic_at")),
+            "latest_submission_at": _iso(row.get("latest_submission_at")),
+            "latest_comment_at": _iso(row.get("latest_comment_at")),
+        }
+
     def insert_submission(self, payload: dict[str, Any]) -> None:
         with self.connect() as conn:
             with conn.cursor() as cur:

@@ -21,7 +21,11 @@ class RivalWorker:
     settings: RivalSettings
     client: HaynesWorldClient
     data_engine: RivalDataEngine = field(default_factory=RivalDataEngine)
-    persona_engine: RivalPersonaEngine = field(default_factory=RivalPersonaEngine)
+    persona_engine: RivalPersonaEngine | None = None
+
+    def __post_init__(self) -> None:
+        if self.persona_engine is None:
+            self.persona_engine = RivalPersonaEngine(settings=self.settings)
 
     def _is_slate_open(self, slate: ActiveSlate, as_of: datetime) -> bool:
         return slate.lock_at > as_of

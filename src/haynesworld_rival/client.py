@@ -10,6 +10,7 @@ from urllib.request import Request, urlopen
 
 from .config import RivalSettings
 from .contracts import ActiveSlate, ContestSubmission, ForumCommentDraft, ForumTopicDraft, SlateMatch
+from .version import APP_VERSION
 
 
 def _parse_datetime(value: str | None) -> datetime | None:
@@ -157,7 +158,7 @@ class HaynesWorldClient:
         payload = {
             "api_key": self.settings.api_key,
             "client_name": self.settings.bot_username,
-            "client_version": "0.1.0",
+            "client_version": APP_VERSION,
         }
         response = self._request_json("POST", self.bot_login_endpoint, payload=payload, require_auth=False)
         self.session_token = self._extract_token(response)
