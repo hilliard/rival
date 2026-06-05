@@ -109,6 +109,32 @@ haynesworld-rival run-once --dry-run
 haynesworld-rival poll-loop
 ```
 
+## Local Chat Scripts
+
+Use these helpers to test Ollama output and Rival-style prompt behavior directly in this workspace.
+
+- Python streaming chat (inherits `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, and timeout env vars):
+
+```bash
+python scripts/ollama_chat.py
+```
+
+- PowerShell streaming chat (same env defaults):
+
+```powershell
+./scripts/ollama_chat.ps1
+```
+
+Optional overrides:
+
+```bash
+python scripts/ollama_chat.py --model qwen2.5:1b --base-url http://127.0.0.1:11434 --timeout 30
+```
+
+```powershell
+./scripts/ollama_chat.ps1 -Model qwen2.5:1b -BaseUrl http://127.0.0.1:11434 -TimeoutSeconds 30
+```
+
 ## Runtime Modes
 
 - `mock`: uses in-process mock slates and mock publish targets. Pair it with `scripts/mock_ollama.py` if you want persona generation to stay local too.
