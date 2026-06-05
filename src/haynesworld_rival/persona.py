@@ -55,13 +55,13 @@ class RivalPersonaEngine:
     def build_topic(self, submission: ContestSubmission) -> ForumTopicDraft:
         generated = self._get_persona_output(submission)
         if generated is None:
-            return _fallback_topic(submission)
+            raise RuntimeError("Persona generation failed.")
         return ForumTopicDraft(title=generated.title, body=generated.body)
 
     def build_comment(self, submission: ContestSubmission, target_thread_id: str | None = None) -> ForumCommentDraft:
         generated = self._get_persona_output(submission)
         if generated is None:
-            return _fallback_comment(submission, target_thread_id=target_thread_id)
+            raise RuntimeError("Persona generation failed.")
         return ForumCommentDraft(body=generated.comment, thread_id=target_thread_id)
 
     def build_prompt(self, submission: ContestSubmission) -> PersonaPrompt:
@@ -104,10 +104,10 @@ class RivalPersonaEngine:
                 raw = response.read().decode("utf-8")
         except HTTPError as exc:
             exc.close()
-            LOGGER.warning("Ollama persona generation failed, using fallback templates: %s", exc)
+            LOGGER.debug("Ollama persona generation failed: %s", exc)
             return None
         except (URLError, TimeoutError, OSError) as exc:
-            LOGGER.warning("Ollama persona generation failed, using fallback templates: %s", exc)
+            LOGGER.debug("Ollama persona generation failed: %s", exc)
             return None
 
         try:
@@ -117,7 +117,7 @@ class RivalPersonaEngine:
                 return None
             return self._parse_generated_output(generated_text)
         except (json.JSONDecodeError, ValueError) as exc:
-            LOGGER.warning("Ollama persona response was invalid, using fallback templates: %s", exc)
+            LOGGER.debug("Ollama persona response was invalid: %s", exc)
             return None
 
     def _get_persona_output(self, submission: ContestSubmission) -> PersonaOutput | None:

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+import io
 import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
 import unittest
+from contextlib import redirect_stdout
 
 from haynesworld_rival.config import RivalSettings
 from haynesworld_rival.contracts import ContestSubmission, SubmissionPick
@@ -80,7 +82,7 @@ class PersonaOllamaTests(unittest.TestCase):
             }
         )
         with _mock_ollama(response_text) as base_url:
-            settings = RivalSettings(ollama_base_url=base_url, ollama_model="llama3.1")
+            settings = RivalSettings(ollama_base_url=base_url, ollama_model="llama3.1", runtime_mode="go_live")
             engine = RivalPersonaEngine(settings=settings)
 
             topic = engine.build_topic(self._submission())
@@ -91,16 +93,37 @@ class PersonaOllamaTests(unittest.TestCase):
             self.assertIn("Bring evidence", comment.body)
             self.assertEqual(_MockOllamaHandler.request_count, 1)
 
-    def test_persona_falls_back_when_ollama_response_is_invalid(self) -> None:
+    def test_persona_fails_closed_when_ollama_response_is_invalid(self) -> None:
         with _mock_ollama("not-json-at-all") as base_url:
-            settings = RivalSettings(ollama_base_url=base_url, ollama_model="llama3.1")
+            settings = RivalSettings(ollama_base_url=base_url, ollama_model="llama3.1", runtime_mode="go_live")
             engine = RivalPersonaEngine(settings=settings)
 
-            topic = engine.build_topic(self._submission())
-            comment = engine.build_comment(self._submission())
+            with self.assertRaisesRegex(RuntimeError, "Persona generation failed"):
+                engine.build_topic(self._submission())
 
-            self.assertIn("Benchmark drop", topic.body)
-            self.assertIn("bring a model, not a mood", comment.body)
+            with self.assertRaisesRegex(RuntimeError, "Persona generation failed"):
+                engine.build_comment(self._submission())
+
+    def test_persona_fails_closed_when_ollama_returns_http_error(self) -> None:
+        with _mock_ollama("server exploded", status_code=500) as base_url:
+            settings = RivalSettings(ollama_base_url=base_url, ollama_model="llama3.1", runtime_mode="go_live")
+            engine = RivalPersonaEngine(settings=settings)
+
+            with self.assertRaisesRegex(RuntimeError, "Persona generation failed"):
+                engine.build_topic(self._submission())
+
+            with self.assertRaisesRegex(RuntimeError, "Persona generation failed"):
+                engine.build_comment(self._submission())
+
+    def test_persona_fails_closed_in_mock_mode_without_ollama(self) -> None:
+        settings = RivalSettings(runtime_mode="mock")
+        engine = RivalPersonaEngine(settings=settings)
+
+        with self.assertRaisesRegex(RuntimeError, "Persona generation failed"):
+            engine.build_topic(self._submission())
+
+        with self.assertRaisesRegex(RuntimeError, "Persona generation failed"):
+            engine.build_comment(self._submission())
 
 
 if __name__ == "__main__":

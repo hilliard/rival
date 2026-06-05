@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+from contextlib import redirect_stdout
 from datetime import UTC
+import io
 import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
@@ -9,8 +11,10 @@ import unittest
 
 from haynesworld_rival.client import HaynesWorldClient
 from haynesworld_rival.config import RivalSettings
+from haynesworld_rival.cli import main as cli_main
+from haynesworld_rival.client import MockHaynesWorldClient, create_client
+from haynesworld_rival.contracts import ForumCommentDraft, ForumTopicDraft
 from haynesworld_rival.data_engine import RivalDataEngine
-from haynesworld_rival.persona import RivalPersonaEngine
 
 
 class _MockApiHandler(BaseHTTPRequestHandler):
@@ -135,11 +139,10 @@ class ClientParsingTests(unittest.TestCase):
             self.assertEqual(slates[0].lock_at.tzinfo, UTC)
 
             engine = RivalDataEngine()
-            persona = RivalPersonaEngine()
             submission = engine.draft_submission(slates[0], bot_user_id="bot_therival")
             client.submit_predictions(submission)
-            client.post_topic(persona.build_topic(submission))
-            client.post_comment(persona.build_comment(submission))
+            client.post_topic(ForumTopicDraft(title="@TheRival benchmark drop", body="Benchmark body"))
+            client.post_comment(ForumCommentDraft(body="Benchmark comment"))
 
             self.assertEqual(len(_MockApiHandler.submissions), 1)
             self.assertEqual(_MockApiHandler.submissions[0]["slate_id"], "slate_2026_week_01")
@@ -157,6 +160,44 @@ class ClientParsingTests(unittest.TestCase):
 
             token = client.login()
             self.assertEqual(token, "jwt-test-token-top")
+
+    def test_mock_runtime_client_uses_in_process_slates_and_records_actions(self) -> None:
+        settings = RivalSettings(runtime_mode="mock")
+        client = create_client(settings)
+
+        self.assertIsInstance(client, MockHaynesWorldClient)
+
+        slates = client.fetch_active_slates()
+        self.assertEqual(len(slates), 1)
+        self.assertEqual(slates[0].slate_id, "slate_2026_week_01")
+        self.assertEqual(client.login_count, 1)
+
+        engine = RivalDataEngine()
+        submission = engine.draft_submission(slates[0], bot_user_id="bot_therival")
+        client.submit_predictions(submission)
+
+        self.assertEqual(len(client.submitted_predictions), 1)
+        self.assertEqual(client.submitted_predictions[0]["slate_id"], "slate_2026_week_01")
+        self.assertEqual(len(client.posted_topics), 0)
+        self.assertEqual(len(client.posted_comments), 0)
+
+    def test_runtime_mode_local_aliases_to_mock(self) -> None:
+        client = create_client(RivalSettings(runtime_mode="local"))
+
+        self.assertIsInstance(client, MockHaynesWorldClient)
+
+    def test_runtime_mode_go_live_uses_real_client(self) -> None:
+        client = create_client(RivalSettings(runtime_mode="go_live"))
+
+        self.assertIsInstance(client, HaynesWorldClient)
+
+    def test_show_config_reports_cli_runtime_mode_override(self) -> None:
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            exit_code = cli_main(["--runtime-mode", "mock", "show-config"])
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("'runtime_mode': 'mock'", buffer.getvalue())
 
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@ import argparse
 import logging
 from pprint import pprint
 
-from .client import HaynesWorldClient
+from .client import create_client
 from .config import RivalSettings
 from .db import RivalDatabase
 from .webapp import run as run_api_server
@@ -18,6 +18,11 @@ def build_parser() -> argparse.ArgumentParser:
         default="INFO",
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
         help="Set runtime log verbosity",
+    )
+    parser.add_argument(
+        "--runtime-mode",
+        choices=["mock", "go_live", "local"],
+        help="Override the configured runtime mode for this command",
     )
 
     subcommands = parser.add_subparsers(dest="command", required=True)
@@ -51,10 +56,43 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     settings = RivalSettings.from_env()
-    client = HaynesWorldClient(settings=settings)
+    if args.runtime_mode:
+        settings = RivalSettings(
+            base_url=settings.base_url,
+            api_base_url=settings.api_base_url,
+            bot_username=settings.bot_username,
+            bot_user_id=settings.bot_user_id,
+            api_key=settings.api_key,
+            ollama_base_url=settings.ollama_base_url,
+            ollama_model=settings.ollama_model,
+            poll_interval_seconds=settings.poll_interval_seconds,
+            request_timeout_seconds=settings.request_timeout_seconds,
+            runtime_mode=args.runtime_mode,
+            database_url=settings.database_url,
+            admin_token=settings.admin_token,
+            api_bind_host=settings.api_bind_host,
+            api_bind_port=settings.api_bind_port,
+        )
+    client = create_client(settings=settings)
 
     if args.command == "show-config":
-        pprint(settings)
+        pprint(
+            {
+                "base_url": settings.base_url,
+                "api_base_url": settings.api_base_url,
+                "bot_username": settings.bot_username,
+                "bot_user_id": settings.bot_user_id,
+                "ollama_base_url": settings.ollama_base_url,
+                "ollama_model": settings.ollama_model,
+                "poll_interval_seconds": settings.poll_interval_seconds,
+                "request_timeout_seconds": settings.request_timeout_seconds,
+                "runtime_mode": settings.runtime_mode,
+                "database_url": settings.database_url,
+                "admin_token": settings.admin_token,
+                "api_bind_host": settings.api_bind_host,
+                "api_bind_port": settings.api_bind_port,
+            }
+        )
         return 0
 
     if args.command == "show-endpoints":
